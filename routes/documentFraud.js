@@ -2,25 +2,11 @@ import express from 'express';
 import multer from 'multer';
 import { HfInference } from '@huggingface/inference';
 import sharp from 'sharp';
-import fs from 'fs';
-import path from 'path';
 
 const router = express.Router();
 
-// Configure multer for file uploads (max 10MB)
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = 'uploads/';
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Configure multer with memory storage (Vercel has read-only filesystem)
+const storage = multer.memoryStorage();
 
 const upload = multer({
     storage,
@@ -45,10 +31,10 @@ const getHfClient = () => {
 };
 
 // ============================================================
-// Helper: Convert image to base64 for API calls
+// Helper: Convert image buffer to base64 for API calls
 // ============================================================
-async function imageToBase64(filePath) {
-    const imageBuffer = await sharp(filePath)
+async function imageToBase64(inputBuffer) {
+    const imageBuffer = await sharp(inputBuffer)
         .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toBuffer();
@@ -58,8 +44,8 @@ async function imageToBase64(filePath) {
 // ============================================================
 // Helper: Get image buffer for Hugging Face API
 // ============================================================
-async function getImageBuffer(filePath) {
-    return await sharp(filePath)
+async function getImageBuffer(inputBuffer) {
+    return await sharp(inputBuffer)
         .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toBuffer();
@@ -68,9 +54,9 @@ async function getImageBuffer(filePath) {
 // ============================================================
 // Helper: Analyze image metadata for tampering signs
 // ============================================================
-async function analyzeImageMetadata(filePath) {
-    const metadata = await sharp(filePath).metadata();
-    const stats = fs.statSync(filePath);
+async function analyzeImageMetadata(inputBuffer) {
+    const metadata = await sharp(inputBuffer).metadata();
+    const fileSize = inputBuffer.length;
 
     const findings = [];
     let suspicionScore = 0;
@@ -97,7 +83,7 @@ async function analyzeImageMetadata(filePath) {
 
     // Check file size vs dimensions ratio (compressed too much = possible edit)
     const pixelCount = metadata.width * metadata.height;
-    const bytesPerPixel = stats.size / pixelCount;
+    const bytesPerPixel = fileSize / pixelCount;
     if (bytesPerPixel < 0.1) {
         findings.push({
             type: 'HIGH_COMPRESSION',
@@ -200,12 +186,12 @@ Provide a brief fraud risk assessment:`;
 // ============================================================
 // Helper: Visual anomaly detection
 // ============================================================
-async function detectVisualAnomalies(filePath) {
+async function detectVisualAnomalies(inputBuffer) {
     const findings = [];
     let suspicionScore = 0;
 
     try {
-        const image = sharp(filePath);
+        const image = sharp(inputBuffer);
         const { data, info } = await image
             .resize(512, 512, { fit: 'fill' })
             .raw()
@@ -302,8 +288,6 @@ async function detectVisualAnomalies(filePath) {
 // MAIN ROUTE: POST /api/document-fraud/analyze
 // ============================================================
 router.post('/analyze', upload.single('document'), async (req, res) => {
-    const filePath = req.file?.path;
-
     try {
         if (!req.file) {
             return res.status(400).json({
@@ -328,8 +312,10 @@ router.post('/analyze', upload.single('document'), async (req, res) => {
         };
 
         // ---- Step 1: Image Metadata Analysis ----
+        const fileBuffer = req.file.buffer;
+
         console.log('🔍 Step 1: Analyzing image metadata...');
-        const metadataAnalysis = await analyzeImageMetadata(filePath);
+        const metadataAnalysis = await analyzeImageMetadata(fileBuffer);
         results.findings.push(...metadataAnalysis.findings);
         results.overallRiskScore += metadataAnalysis.suspicionScore;
         results.aiAnalysis.imageMetadata = {
@@ -343,7 +329,7 @@ router.post('/analyze', upload.single('document'), async (req, res) => {
 
         // ---- Step 2: Visual Anomaly Detection ----
         console.log('🔍 Step 2: Detecting visual anomalies...');
-        const visualAnalysis = await detectVisualAnomalies(filePath);
+        const visualAnalysis = await detectVisualAnomalies(fileBuffer);
         results.findings.push(...visualAnalysis.findings);
         results.overallRiskScore += visualAnalysis.suspicionScore;
 
@@ -353,7 +339,7 @@ router.post('/analyze', upload.single('document'), async (req, res) => {
             const hf = getHfClient();
             hfAvailable = true;
 
-            const imageBuffer = await getImageBuffer(filePath);
+            const imageBuffer = await getImageBuffer(fileBuffer);
 
             // 3a: Document Classification
             console.log('🤖 Step 3a: Classifying document type...');
@@ -426,11 +412,6 @@ router.post('/analyze', upload.single('document'), async (req, res) => {
             message: 'Error analyzing document',
             error: error.message
         });
-    } finally {
-        // Clean up uploaded file
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
     }
 });
 
