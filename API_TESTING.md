@@ -173,3 +173,32 @@ fetch('http://localhost:5000/api/clients/{id}', {
   .then(res => res.json())
   .then(data => console.log(data));
 ```
+
+---
+
+## Visa Eligibility Analysis (New)
+
+### 1. Analyze Profile (PowerShell)
+```powershell
+$body = @{
+    qualification = "Bachelor's in Computer Science"
+    ielts = "7.5 bands"
+    ageGap = "2 years"
+    currentAge = 24
+    specificCountry = "UK"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:5000/api/visa-eligibility/analyze" -Method Post -Body $body -ContentType "application/json" | ConvertTo-Json -Depth 10
+```
+
+### 2. Analyze Profile (cURL)
+```bash
+curl -X POST http://localhost:5000/api/visa-eligibility/analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "qualification": "Bachelors in CS",
+    "ielts": "7.0",
+    "ageGap": "None",
+    "currentAge": 22
+  }'
+```

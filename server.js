@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import clientRoutes from './routes/clients.js';
 import documentFraudRoutes from './routes/documentFraud.js';
+import visaEligibilityRoutes from './routes/visaEligibility.js';
 
 // Load environment variables
 dotenv.config();
@@ -35,6 +36,7 @@ app.get('/', (req, res) => {
         endpoints: {
             clients: '/api/clients',
             documentFraud: '/api/document-fraud',
+            visaEligibility: '/api/visa-eligibility',
             health: '/api/health'
         }
     });
@@ -52,6 +54,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/clients', clientRoutes);
 app.use('/api/document-fraud', documentFraudRoutes);
+app.use('/api/visa-eligibility', visaEligibilityRoutes);
 
 // 404 handler
 app.use((req, res) => {
