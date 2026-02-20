@@ -166,17 +166,19 @@ Check for:
 
 Provide a brief fraud risk assessment:`;
 
-        const result = await hf.textGeneration({
-            model: 'mistralai/Mistral-7B-Instruct-v0.3',
-            inputs: `<s>[INST] ${prompt} [/INST]`,
-            parameters: {
-                max_new_tokens: 300,
-                temperature: 0.3,
-                return_full_text: false,
-            }
+        const result = await hf.chatCompletion({
+            model: 'Qwen/Qwen2.5-7B-Instruct',
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            max_tokens: 300,
+            temperature: 0.3
         });
 
-        return result?.generated_text || 'Unable to perform text analysis.';
+        return result.choices[0].message.content || 'Unable to perform text analysis.';
     } catch (error) {
         console.warn('Text analysis warning:', error.message);
         return 'Text analysis unavailable - model may be loading. Try again in a few seconds.';

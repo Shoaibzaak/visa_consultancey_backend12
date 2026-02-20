@@ -51,20 +51,25 @@ Please structure your response with:
 
 Use professional markdown formatting. Keep the advice concise but informative. Act as a professional Overseas Education & Visa Consultant expert.`;
 
-        // Call Hugging Face API
-        const result = await hf.textGeneration({
-            model: 'mistralai/Mistral-7B-Instruct-v0.3',
-            inputs: `<s>[INST] ${instruction} [/INST]`,
-            parameters: {
-                max_new_tokens: 800,
-                temperature: 0.4,
-                top_p: 0.9,
-                return_full_text: false,
-                repetition_penalty: 1.1
-            }
+        // Call Hugging Face API using Chat Completion
+        const result = await hf.chatCompletion({
+            model: 'Qwen/Qwen2.5-7B-Instruct',
+            messages: [
+                {
+                    role: 'system',
+                    content: 'You are a professional Overseas Education & Visa Consultant expert.'
+                },
+                {
+                    role: 'user',
+                    content: instruction
+                }
+            ],
+            max_tokens: 800,
+            temperature: 0.4,
+            top_p: 0.9
         });
 
-        const analysisText = result?.generated_text || 'I apologize, but I am unable to generate an analysis at this moment. Please try again later.';
+        const analysisText = result.choices[0].message.content || 'I apologize, but I am unable to generate an analysis at this moment. Please try again later.';
 
         res.json({
             success: true,
