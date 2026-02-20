@@ -34,11 +34,7 @@ router.post('/analyze', async (req, res) => {
         const hf = getHfClient();
 
         // Construct a prompt for the AI to act as a visa counselor
-        const prompt = `<|system|>
-You are a professional Overseas Education & Visa Consultant expert. You help students understand their eligibility for studying abroad in various countries like USA, UK, Canada, Australia, Germany, and others. You provide honest, accurate, and helpful advice based on global visa trends and academic requirements.
-
-<|user|>
-Please analyze this student's profile and recommend which countries are suitable for them to apply for a student visa.
+        const instruction = `Analyze this student's profile and recommend which countries are suitable for them to apply for a student visa.
 
 Student Profile:
 - **Last Qualification**: ${qualification}
@@ -53,14 +49,12 @@ Please structure your response with:
 3. **Challenges & Risks**: Any potential hurdles (like long study gaps or specific IELTS requirements).
 4. **Conclusion/Next Steps**: What the student should do next.
 
-Use professional markdown formatting. Keep the advice concise but informative.
-
-<|assistant|>`;
+Use professional markdown formatting. Keep the advice concise but informative. Act as a professional Overseas Education & Visa Consultant expert.`;
 
         // Call Hugging Face API
         const result = await hf.textGeneration({
-            model: 'microsoft/Phi-3-mini-4k-instruct',
-            inputs: prompt,
+            model: 'mistralai/Mistral-7B-Instruct-v0.3',
+            inputs: `<s>[INST] ${instruction} [/INST]`,
             parameters: {
                 max_new_tokens: 800,
                 temperature: 0.4,

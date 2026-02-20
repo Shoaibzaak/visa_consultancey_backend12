@@ -167,8 +167,8 @@ Check for:
 Provide a brief fraud risk assessment:`;
 
         const result = await hf.textGeneration({
-            model: 'microsoft/Phi-3-mini-4k-instruct',
-            inputs: prompt,
+            model: 'mistralai/Mistral-7B-Instruct-v0.3',
+            inputs: `<s>[INST] ${prompt} [/INST]`,
             parameters: {
                 max_new_tokens: 300,
                 temperature: 0.3,
